@@ -220,7 +220,43 @@ def main():
         
         # Re-run the algorithm with updated topology
         print("\nRunning algorithm with updated topology...")
-        # TODO: Reset distance tables and run algorithm again
+        
+        # Reset and reinitialize distance tables
+        for router in routers.values():
+            router.initialize_distance_table()
+        
+        # Print initial state after updates
+        step = 0
+        for name in sorted(router_names):
+            routers[name].print_distance_table(step)
+        
+        # Run algorithm again until convergence
+        converged = False
+        while not converged:
+            step += 1
+            converged = True
+            
+            # Collect distance vectors
+            distance_vectors = {}
+            for name in router_names:
+                distance_vectors[name] = routers[name].get_distance_vector()
+            
+            # Update each router
+            for name in router_names:
+                router = routers[name]
+                for neighbor_name in router.neighbors:
+                    changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                    if changed:
+                        converged = False
+            
+            # Print tables if not converged
+            if not converged:
+                for name in sorted(router_names):
+                    routers[name].print_distance_table(step)
+        
+        # Print final routing tables after updates
+        for name in sorted(router_names):
+            routers[name].print_routing_table()
     
     
 if __name__ == "__main__":
