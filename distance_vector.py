@@ -62,6 +62,25 @@ class Router:
                 distance_vector[dest] = min_cost
         return distance_vector
     
+    def update_from_neighbor(self, neighbor_name, neighbor_distances):
+        """Update distance table based on neighbor's distance vector"""
+        if neighbor_name not in self.neighbors:
+            return False  # Not a direct neighbor
+        
+        changed = False
+        neighbor_cost = self.neighbors[neighbor_name]
+        
+        for dest, neighbor_dist in neighbor_distances.items():
+            if dest != self.name:  # Don't update routes to ourselves
+                # Cost via this neighbor = cost to neighbor + neighbor's cost to dest
+                new_cost = neighbor_cost + neighbor_dist
+                old_cost = self.distance_table[dest][neighbor_name]
+                
+                if new_cost != old_cost:
+                    self.distance_table[dest][neighbor_name] = new_cost
+                    changed = True
+        
+        return changed
 
 def main():
     # Step 1: Read router names
