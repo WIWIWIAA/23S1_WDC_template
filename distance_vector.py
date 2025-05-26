@@ -5,10 +5,11 @@ class Router:
         self.name = name                    
         self.all_routers = all_routers      
         self.neighbors = {}                 
-        self.distance_table = {}            
+        self.distance_table = {}
+        # Store complete distance vectors received from neighbors
+        self.stored_distance_vectors = {}
         
         # Initialize distance table
-        # distance_table[destination][next_hop] = cost to reach destination via next_hop
         for destination in all_routers:
             if destination != self.name:
                 self.distance_table[destination] = {}
@@ -40,18 +41,17 @@ class Router:
         header = "     " + "    ".join(f"{dest}" for dest in destinations) + "    "
         print(header)
         
-        # Print each row (one row per next hop)
         for next_hop in destinations:
             row = f"{next_hop}    "
             for dest in destinations:
-                # SWAPPED: Print cost to reach next_hop via dest
+                # Access as distance_table[next_hop][dest] for correct format
                 cost = self.distance_table[next_hop][dest]
                 if cost == float('inf'):
                     row += "INF  "
                 else:
                     row += f"{int(cost)}    "
             print(row)
-        print()  # Blank line after each table
+        print()
     
     def get_distance_vector(self):
         """Get current best distances to each destination"""
@@ -73,12 +73,17 @@ class Router:
         if neighbor_name not in self.neighbors:
             return False  # Not a direct neighbor
         
+        # Store the complete distance vector from this neighbor
+        self.stored_distance_vectors[neighbor_name] = neighbor_distances.copy()
+        
         changed = False
         neighbor_cost = self.neighbors[neighbor_name]
         
-        for dest, neighbor_dist in neighbor_distances.items():
-            if dest != self.name:  # Don't update routes to ourselves
+        # Update costs to all destinations via this neighbor
+        for dest in self.all_routers:
+            if dest != self.name and dest in neighbor_distances:
                 # Cost via this neighbor = cost to neighbor + neighbor's cost to dest
+                neighbor_dist = neighbor_distances[dest]
                 if neighbor_dist == float('inf'):
                     new_cost = float('inf')
                 else:
@@ -93,6 +98,56 @@ class Router:
         
         return changed
     
+    def recalculate_after_topology_change(self):
+        """Recalculate distance table after topology changes - COMPLETE FIX"""
+        
+        # Step 1: Remove stored distance vectors for neighbors that no longer exist
+        neighbors_to_remove = []
+        for stored_neighbor in self.stored_distance_vectors:
+            if stored_neighbor not in self.neighbors:
+                neighbors_to_remove.append(stored_neighbor)
+        
+        for neighbor in neighbors_to_remove:
+            del self.stored_distance_vectors[neighbor]
+        
+        # Step 2: Update distance table
+        for dest in self.all_routers:
+            if dest != self.name:
+                for next_hop in self.all_routers:
+                    if next_hop != self.name:
+                        
+                        if dest == next_hop:
+                            # Direct connection case
+                            if dest in self.neighbors:
+                                # Update direct link cost
+                                self.distance_table[dest][next_hop] = self.neighbors[dest]
+                            else:
+                                # Link was removed
+                                self.distance_table[dest][next_hop] = float('inf')
+                        
+                        elif next_hop in self.neighbors:
+                            # Indirect path via existing neighbor
+                            if next_hop in self.stored_distance_vectors:
+                                # Recalculate using stored distance vector
+                                neighbor_cost = self.neighbors[next_hop]
+                                stored_dv = self.stored_distance_vectors[next_hop]
+                                
+                                if dest in stored_dv:
+                                    if stored_dv[dest] == float('inf'):
+                                        self.distance_table[dest][next_hop] = float('inf')
+                                    else:
+                                        # KEY: Recalculate entire column using stored DV
+                                        self.distance_table[dest][next_hop] = neighbor_cost + stored_dv[dest]
+                                else:
+                                    self.distance_table[dest][next_hop] = float('inf')
+                            else:
+                                # No stored DV, reset to infinity (will be recalculated in next exchange)
+                                self.distance_table[dest][next_hop] = float('inf')
+                        
+                        else:
+                            # Next hop is no longer a neighbor
+                            self.distance_table[dest][next_hop] = float('inf')
+    
     def print_routing_table(self):
         """Print final routing table in required format"""
         print(f"Routing Table of router {self.name}:")
@@ -103,7 +158,7 @@ class Router:
             best_cost = float('inf')
             best_next_hop = None
             
-            for next_hop in sorted(self.all_routers):  # Alphabetical for tie-breaking
+            for next_hop in sorted(self.all_routers):
                 if next_hop != self.name:
                     cost = self.distance_table[dest][next_hop]
                     if cost < best_cost:
@@ -131,7 +186,6 @@ def main():
         line = input().strip()
         if line == "UPDATE":
             break
-        # Parse "X Y 3" format
         parts = line.split()
         router1, router2, cost = parts[0], parts[1], int(parts[2])
         links.append((router1, router2, cost))
@@ -143,7 +197,6 @@ def main():
     
     # Step 4: Set up direct connections
     for router1, router2, cost in links:
-        # Add bidirectional links
         routers[router1].neighbors[router2] = cost
         routers[router2].neighbors[router1] = cost
         
@@ -152,35 +205,38 @@ def main():
         router.initialize_distance_table()
         
     # Step 6: Print initial distance tables (t=0)
-    for name in sorted(router_names):  # Alphabetical order
+    for name in sorted(router_names):
         routers[name].print_distance_table(0)
         
     # Step 7: Run Distance Vector algorithm until convergence
     step = 0
-    converged = False
+    last_distance_vectors = {}
     
-    while not converged:
+    while True:
         step += 1
-        converged = True  # Assume converged unless we see changes
         
         # Collect all distance vectors that will be sent this round
         distance_vectors = {}
         for name in router_names:
             distance_vectors[name] = routers[name].get_distance_vector()
         
+        # Check if converged
+        if step > 1 and distance_vectors == last_distance_vectors:
+            break
+            
         # Each router updates based on what it receives from neighbors
         for name in router_names:
             router = routers[name]
             for neighbor_name in router.neighbors:
                 if neighbor_name in distance_vectors:
-                    # Router receives distance vector from this neighbor
-                    changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
-                    if changed:
-                        converged = False  # Something changed, not converged yet
+                    router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
         
         # Print distance tables for this step
         for name in sorted(router_names):
             routers[name].print_distance_table(step)
+            
+        # Save for convergence check
+        last_distance_vectors = distance_vectors
     
     # Step 8: Print final routing tables
     for name in sorted(router_names):
@@ -193,7 +249,7 @@ def main():
             line = input().strip()
             if line == "END":
                 break
-            if line:  # Skip empty lines
+            if line:
                 parts = line.split()
                 router1, router2, cost = parts[0], parts[1], int(parts[2])
                 updates.append((router1, router2, cost))
@@ -202,6 +258,7 @@ def main():
     
     # Apply updates if any
     if updates:
+        # Apply topology changes
         for router1, router2, cost in updates:
             if cost == -1:
                 # Remove link
@@ -214,45 +271,41 @@ def main():
                 routers[router1].neighbors[router2] = cost
                 routers[router2].neighbors[router1] = cost
         
-        # Re-run the algorithm with updated topology
-        # Reset and reinitialize distance tables
+        # Recalculate all distance tables after topology change
         for router in routers.values():
-            # Clear distance table
-            for destination in router.distance_table:
-                for next_hop in router.distance_table[destination]:
-                    router.distance_table[destination][next_hop] = float('inf')
-            
-            # Reinitialize with new neighbor costs
-            router.initialize_distance_table()
+            router.recalculate_after_topology_change()
         
-        # Print initial state after updates (continue step numbering)
-        step += 1
+        step = 3  # Start at t=3 after topology change
         for name in sorted(router_names):
             routers[name].print_distance_table(step)
         
         # Run algorithm again until convergence
-        converged = False
-        while not converged:
-            step += 1
-            converged = True
-            
+        last_distance_vectors = {}
+        
+        while True:
             # Collect distance vectors
             distance_vectors = {}
             for name in router_names:
                 distance_vectors[name] = routers[name].get_distance_vector()
             
-            # Update each router
+            # Check if converged
+            if step > 3 and distance_vectors == last_distance_vectors:
+                break
+                
+            # Each router updates based on what it receives from neighbors
             for name in router_names:
                 router = routers[name]
                 for neighbor_name in router.neighbors:
                     if neighbor_name in distance_vectors:
-                        changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
-                        if changed:
-                            converged = False
+                        router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
             
-            # Print tables for this step
+            # Increment step and print tables for this step
+            step += 1
             for name in sorted(router_names):
                 routers[name].print_distance_table(step)
+                
+            # Save for convergence check
+            last_distance_vectors = distance_vectors
         
         # Print final routing tables after updates
         for name in sorted(router_names):
