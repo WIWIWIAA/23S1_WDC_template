@@ -34,7 +34,7 @@ class Router:
         
         # Header with destination names
         destinations = [d for d in self.all_routers if d != self.name]
-        header = "     " + "    ".join(f"{dest:<4}" for dest in destinations)
+        header = "     " + "".join(f"{dest:<5}" for dest in destinations)
         print(header)
         
         # Rows for each next hop
@@ -81,6 +81,29 @@ class Router:
                     changed = True
         
         return changed
+    
+    def print_routing_table(self):
+        """Print final routing table in required format"""
+        print(f"Routing Table of router {self.name}:")
+        
+        destinations = [d for d in self.all_routers if d != self.name]
+        for dest in sorted(destinations):  # Alphabetical order
+            # Find best next hop for this destination
+            best_cost = float('inf')
+            best_next_hop = None
+            
+            for next_hop in sorted(self.all_routers):  # Alphabetical for tie-breaking
+                if next_hop != self.name:
+                    cost = self.distance_table[dest][next_hop]
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_next_hop = next_hop
+            
+            if best_cost == float('inf'):
+                print(f"{dest},INF,INF")
+            else:
+                print(f"{dest},{best_next_hop},{best_cost}")
+        print()
 
 def main():
     # Step 1: Read router names
@@ -134,6 +157,37 @@ def main():
         
     for name in sorted(router_names):  # Alphabetical order
         routers[name].print_distance_table(0)
+        
+    step = 0
+    converged = False
+    
+    while not converged:
+        step += 1
+        converged = True  # Assume converged unless we see changes
+        
+        # Collect all distance vectors that will be sent this round
+        distance_vectors = {}
+        for name in router_names:
+            distance_vectors[name] = routers[name].get_distance_vector()
+        
+        # Each router updates based on what it receives from neighbors
+        for name in router_names:
+            router = routers[name]
+            for neighbor_name in router.neighbors:
+                # Router receives distance vector from this neighbor
+                changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                if changed:
+                    converged = False  # Something changed, not converged yet
+        
+        # Print distance tables for this step (only if something changed)
+        if not converged:
+            for name in sorted(router_names):
+                routers[name].print_distance_table(step)
+    
+    print("Algorithm converged!")
+    
+    for name in sorted(router_names):
+        routers[name].print_routing_table()
     
     
 if __name__ == "__main__":
