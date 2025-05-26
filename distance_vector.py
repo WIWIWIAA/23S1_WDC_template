@@ -36,8 +36,28 @@ def main():
         parts = line.split()
         router1, router2, cost = parts[0], parts[1], int(parts[2])
         links.append((router1, router2, cost))
+        
+    # Step 3: Create routers
+    routers = {}
+    for name in router_names:
+        routers[name] = Router(name, router_names)
     
+    print(f"Created routers: {list(routers.keys())}")  # Debug print
+    
+    # Step 4: Set up direct connections
+    for router1, router2, cost in links:
+        # Add bidirectional links
+        routers[router1].neighbors[router2] = cost
+        routers[router2].neighbors[router1] = cost
+        
     print(f"Initial links: {links}")  # Debug print
+    
+    # Debug: print each router's neighbors
+    for name in router_names:
+        print(f"Router {name} neighbors: {routers[name].neighbors}")
+    
+    
+    
 
 if __name__ == "__main__":
     main()
