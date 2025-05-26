@@ -16,8 +16,28 @@ class Router:
                         self.distance_table[destination][next_hop] = float('inf')
 
 def main():
-    # This is where your program starts
-    pass
+    # Step 1: Read router names
+    router_names = []
+    while True:
+        line = input().strip()
+        if line == "START":
+            break
+        router_names.append(line)
+    
+    print(f"Router names: {router_names}")  # Debug print
+    
+    # Step 2: Read initial topology 
+    links = []
+    while True:
+        line = input().strip()
+        if line == "UPDATE":
+            break
+        # Parse "X Y 3" format
+        parts = line.split()
+        router1, router2, cost = parts[0], parts[1], int(parts[2])
+        links.append((router1, router2, cost))
+    
+    print(f"Initial links: {links}")  # Debug print
 
 if __name__ == "__main__":
     main()
