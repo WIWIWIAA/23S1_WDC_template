@@ -8,6 +8,7 @@ class Router:
         self.distance_table = {}            
         
         # Initialize distance table
+        # distance_table[destination][next_hop] = cost to reach destination via next_hop
         for destination in all_routers:
             if destination != self.name:
                 self.distance_table[destination] = {}
@@ -21,9 +22,9 @@ class Router:
             if destination != self.name:
                 for next_hop in self.all_routers:
                     if next_hop != self.name:
-                        if destination == next_hop and next_hop in self.neighbors:
+                        if destination in self.neighbors and destination == next_hop:
                             # Direct connection: cost to reach neighbor via itself
-                            self.distance_table[destination][next_hop] = self.neighbors[next_hop]
+                            self.distance_table[destination][next_hop] = self.neighbors[destination]
                         else:
                             # Everything else starts as infinity
                             self.distance_table[destination][next_hop] = float('inf')
@@ -33,20 +34,23 @@ class Router:
         print(f"Distance Table of router {self.name} at t={step}:")
         
         # Header with destination names
-        destinations = [d for d in self.all_routers if d != self.name]
-        header = "     " + "".join(f"{dest:<5}" for dest in destinations)
+        destinations = sorted([d for d in self.all_routers if d != self.name])
+        
+        # Print header with proper spacing
+        header = "     " + "    ".join(f"{dest}" for dest in destinations) + "    "
         print(header)
         
-        # Rows for each next hop
+        # Print each row (one row per next hop)
         for next_hop in destinations:
-            row = f"{next_hop:<4} "
+            row = f"{next_hop}    "
             for dest in destinations:
-                cost = self.distance_table[dest][next_hop]
+                # SWAPPED: Print cost to reach next_hop via dest
+                cost = self.distance_table[next_hop][dest]
                 if cost == float('inf'):
                     row += "INF  "
                 else:
-                    row += f"{cost:<4} "
-            print(row.rstrip())
+                    row += f"{int(cost)}    "
+            print(row)
         print()  # Blank line after each table
     
     def get_distance_vector(self):
@@ -56,9 +60,11 @@ class Router:
             if dest != self.name:
                 # Find minimum cost across all next hops
                 min_cost = float('inf')
-                for next_hop in self.distance_table[dest]:
-                    if self.distance_table[dest][next_hop] < min_cost:
-                        min_cost = self.distance_table[dest][next_hop]
+                for next_hop in self.all_routers:
+                    if next_hop != self.name:
+                        cost = self.distance_table[dest][next_hop]
+                        if cost < min_cost:
+                            min_cost = cost
                 distance_vector[dest] = min_cost
         return distance_vector
     
@@ -73,7 +79,12 @@ class Router:
         for dest, neighbor_dist in neighbor_distances.items():
             if dest != self.name:  # Don't update routes to ourselves
                 # Cost via this neighbor = cost to neighbor + neighbor's cost to dest
-                new_cost = neighbor_cost + neighbor_dist
+                if neighbor_dist == float('inf'):
+                    new_cost = float('inf')
+                else:
+                    new_cost = neighbor_cost + neighbor_dist
+                
+                # Update cost to reach dest via neighbor_name
                 old_cost = self.distance_table[dest][neighbor_name]
                 
                 if new_cost != old_cost:
@@ -86,8 +97,8 @@ class Router:
         """Print final routing table in required format"""
         print(f"Routing Table of router {self.name}:")
         
-        destinations = [d for d in self.all_routers if d != self.name]
-        for dest in sorted(destinations):  # Alphabetical order
+        destinations = sorted([d for d in self.all_routers if d != self.name])
+        for dest in destinations:
             # Find best next hop for this destination
             best_cost = float('inf')
             best_next_hop = None
@@ -102,10 +113,10 @@ class Router:
             if best_cost == float('inf'):
                 print(f"{dest},INF,INF")
             else:
-                print(f"{dest},{best_next_hop},{best_cost}")
+                print(f"{dest},{best_next_hop},{int(best_cost)}")
         print()
 
-def main(use_poisoned_reverse=False):
+def main():
     # Step 1: Read router names
     router_names = []
     while True:
@@ -161,15 +172,15 @@ def main(use_poisoned_reverse=False):
         for name in router_names:
             router = routers[name]
             for neighbor_name in router.neighbors:
-                # Router receives distance vector from this neighbor
-                changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
-                if changed:
-                    converged = False  # Something changed, not converged yet
+                if neighbor_name in distance_vectors:
+                    # Router receives distance vector from this neighbor
+                    changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                    if changed:
+                        converged = False  # Something changed, not converged yet
         
-        # Print distance tables for this step (only if something changed)
-        if not converged:
-            for name in sorted(router_names):
-                routers[name].print_distance_table(step)
+        # Print distance tables for this step
+        for name in sorted(router_names):
+            routers[name].print_distance_table(step)
     
     # Step 8: Print final routing tables
     for name in sorted(router_names):
@@ -178,13 +189,16 @@ def main(use_poisoned_reverse=False):
     # Step 9: Handle updates
     updates = []
     while True:
-        line = input().strip()
-        if line == "END":
+        try:
+            line = input().strip()
+            if line == "END":
+                break
+            if line:  # Skip empty lines
+                parts = line.split()
+                router1, router2, cost = parts[0], parts[1], int(parts[2])
+                updates.append((router1, router2, cost))
+        except EOFError:
             break
-        if line:  # Skip empty lines
-            parts = line.split()
-            router1, router2, cost = parts[0], parts[1], int(parts[2])
-            updates.append((router1, router2, cost))
     
     # Apply updates if any
     if updates:
@@ -203,10 +217,16 @@ def main(use_poisoned_reverse=False):
         # Re-run the algorithm with updated topology
         # Reset and reinitialize distance tables
         for router in routers.values():
+            # Clear distance table
+            for destination in router.distance_table:
+                for next_hop in router.distance_table[destination]:
+                    router.distance_table[destination][next_hop] = float('inf')
+            
+            # Reinitialize with new neighbor costs
             router.initialize_distance_table()
         
-        # Print initial state after updates
-        step = 0
+        # Print initial state after updates (continue step numbering)
+        step += 1
         for name in sorted(router_names):
             routers[name].print_distance_table(step)
         
@@ -225,24 +245,18 @@ def main(use_poisoned_reverse=False):
             for name in router_names:
                 router = routers[name]
                 for neighbor_name in router.neighbors:
-                    changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
-                    if changed:
-                        converged = False
+                    if neighbor_name in distance_vectors:
+                        changed = router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                        if changed:
+                            converged = False
             
-            # Print tables if not converged
-            if not converged:
-                for name in sorted(router_names):
-                    routers[name].print_distance_table(step)
+            # Print tables for this step
+            for name in sorted(router_names):
+                routers[name].print_distance_table(step)
         
         # Print final routing tables after updates
         for name in sorted(router_names):
             routers[name].print_routing_table()
 
 if __name__ == "__main__":
-    import sys
-    
-    # Check program name to determine which algorithm to use
-    program_name = sys.argv[0].split('/')[-1].split('\\')[-1]  # Handle both Unix and Windows paths
-    use_poisoned_reverse = (program_name == 'PoisonedReverse')
-    
-    main(use_poisoned_reverse)
+    main()
