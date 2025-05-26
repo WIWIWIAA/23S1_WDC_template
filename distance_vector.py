@@ -188,6 +188,39 @@ def main():
     
     for name in sorted(router_names):
         routers[name].print_routing_table()
+        
+    print("Reading updates...")
+    updates = []
+    while True:
+        line = input().strip()
+        if line == "END":
+            break
+        if line:  # Skip empty lines
+            parts = line.split()
+            router1, router2, cost = parts[0], parts[1], int(parts[2])
+            updates.append((router1, router2, cost))
+    
+    print(f"Updates: {updates}")  # Debug print
+    
+    # Apply updates if any
+    if updates:
+        for router1, router2, cost in updates:
+            if cost == -1:
+                # Remove link
+                if router2 in routers[router1].neighbors:
+                    del routers[router1].neighbors[router2]
+                if router1 in routers[router2].neighbors:
+                    del routers[router2].neighbors[router1]
+                print(f"Removed link {router1}-{router2}")
+            else:
+                # Add/update link
+                routers[router1].neighbors[router2] = cost
+                routers[router2].neighbors[router1] = cost
+                print(f"Updated link {router1}-{router2} to cost {cost}")
+        
+        # Re-run the algorithm with updated topology
+        print("\nRunning algorithm with updated topology...")
+        # TODO: Reset distance tables and run algorithm again
     
     
 if __name__ == "__main__":
