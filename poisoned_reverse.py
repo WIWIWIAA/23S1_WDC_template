@@ -52,6 +52,21 @@ class Router:
                     row += f"{int(cost)}    "
             print(row)
         print()
+        
+    def get_distance_vector(self):
+        """Get current best distances to each destination (for convergence checking)"""
+        distance_vector = {}
+        for dest in self.all_routers:
+            if dest != self.name:
+                # Find minimum cost across all next hops
+                min_cost = float('inf')
+                for next_hop in self.all_routers:
+                    if next_hop != self.name:
+                        cost = self.distance_table[dest][next_hop]
+                        if cost < min_cost:
+                            min_cost = cost
+                distance_vector[dest] = min_cost
+        return distance_vector
     
     def get_distance_vector_for_neighbor(self, neighbor_name):
         """Get distance vector with poisoned reverse for specific neighbor"""
@@ -238,8 +253,9 @@ def main():
         for name in router_names:
             router = routers[name]
             for neighbor_name in router.neighbors:
-                if neighbor_name in distance_vectors:
-                    router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                # Get the poisoned distance vector that this neighbor would send to us
+                neighbor_dv = routers[neighbor_name].get_distance_vector_for_neighbor(name)
+                router.update_from_neighbor(neighbor_name, neighbor_dv)
         
         # Print distance tables for this step
         for name in sorted(router_names):
