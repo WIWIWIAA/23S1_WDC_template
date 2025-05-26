@@ -27,6 +27,29 @@ class Router:
                         else:
                             # Everything else starts as infinity
                             self.distance_table[destination][next_hop] = float('inf')
+                            
+    def print_distance_table(self, step):
+        """Print distance table in required format"""
+        print(f"Distance Table of router {self.name} at t={step}:")
+        
+        # Header with destination names
+        destinations = [d for d in self.all_routers if d != self.name]
+        header = "     " + "    ".join(f"{dest:<4}" for dest in destinations)
+        print(header)
+        
+        # Rows for each next hop
+        for next_hop in destinations:
+            row = f"{next_hop:<4} "
+            for dest in destinations:
+                cost = self.distance_table[dest][next_hop]
+                if cost == float('inf'):
+                    row += "INF  "
+                else:
+                    row += f"{cost:<4} "
+            print(row.rstrip())
+        print()  # Blank line after each table
+    
+    
 
 def main():
     # Step 1: Read router names
@@ -77,6 +100,9 @@ def main():
     print(f"\nRouter X initial distance table:")
     for dest in routers['X'].distance_table:
         print(f"  To {dest}: {routers['X'].distance_table[dest]}")
+        
+    for name in sorted(router_names):  # Alphabetical order
+        routers[name].print_distance_table(0)
     
     
 if __name__ == "__main__":
