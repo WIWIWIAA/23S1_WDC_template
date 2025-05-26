@@ -14,6 +14,19 @@ class Router:
                 for next_hop in all_routers:
                     if next_hop != self.name:
                         self.distance_table[destination][next_hop] = float('inf')
+                        
+    def initialize_distance_table(self):
+        """Set up initial distance table with direct neighbor costs"""
+        for destination in self.all_routers:
+            if destination != self.name:
+                for next_hop in self.all_routers:
+                    if next_hop != self.name:
+                        if destination == next_hop and next_hop in self.neighbors:
+                            # Direct connection: cost to reach neighbor via itself
+                            self.distance_table[destination][next_hop] = self.neighbors[next_hop]
+                        else:
+                            # Everything else starts as infinity
+                            self.distance_table[destination][next_hop] = float('inf')
 
 def main():
     # Step 1: Read router names
@@ -55,9 +68,16 @@ def main():
     # Debug: print each router's neighbors
     for name in router_names:
         print(f"Router {name} neighbors: {routers[name].neighbors}")
+        
+    # Step 5: Initialize distance tables
+    for router in routers.values():
+        router.initialize_distance_table()
+    
+    # Debug: print Router X's initial distance table
+    print(f"\nRouter X initial distance table:")
+    for dest in routers['X'].distance_table:
+        print(f"  To {dest}: {routers['X'].distance_table[dest]}")
     
     
-    
-
 if __name__ == "__main__":
     main()
