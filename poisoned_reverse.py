@@ -52,7 +52,7 @@ class Router:
                     row += f"{int(cost)}    "
             print(row)
         print()
-        
+    
     def get_distance_vector(self):
         """Get current best distances to each destination (for convergence checking)"""
         distance_vector = {}
@@ -70,6 +70,7 @@ class Router:
     
     def get_distance_vector_for_neighbor(self, neighbor_name):
         """Get distance vector with poisoned reverse for specific neighbor"""
+        print(f"DEBUG: Router {self.name} creating distance vector for neighbor {neighbor_name}")
         distance_vector = {}
         for dest in self.all_routers:
             if dest != self.name:
@@ -84,13 +85,18 @@ class Router:
                             best_cost = cost
                             best_next_hop = next_hop
                 
+                print(f"  Best route to {dest}: via {best_next_hop} cost {best_cost}")
+                
                 # POISONED REVERSE: If we route to dest via this neighbor,
                 # advertise infinity to that neighbor
                 if best_next_hop == neighbor_name:
                     distance_vector[dest] = float('inf')  # Poison the reverse!
+                    print(f"  POISONING: Telling {neighbor_name} that {dest} costs INF (route goes via {neighbor_name})")
                 else:
                     distance_vector[dest] = best_cost
+                    print(f"  Normal: Telling {neighbor_name} that {dest} costs {best_cost}")
                     
+        print(f"  Final DV for {neighbor_name}: {distance_vector}")
         return distance_vector
     
     def update_from_neighbor(self, neighbor_name, neighbor_distances):
@@ -124,7 +130,7 @@ class Router:
         return changed
     
     def recalculate_after_topology_change(self):
-        """Recalculate distance table after topology changes - COMPLETE FIX"""
+        """Recalculate distance table after topology changes"""
         
         # Step 1: Remove stored distance vectors for neighbors that no longer exist
         neighbors_to_remove = []
@@ -161,12 +167,12 @@ class Router:
                                     if stored_dv[dest] == float('inf'):
                                         self.distance_table[dest][next_hop] = float('inf')
                                     else:
-                                        # KEY: Recalculate entire column using stored DV
+                                        # Recalculate entire column using stored DV
                                         self.distance_table[dest][next_hop] = neighbor_cost + stored_dv[dest]
                                 else:
                                     self.distance_table[dest][next_hop] = float('inf')
                             else:
-                                # No stored DV, reset to infinity (will be recalculated in next exchange)
+                                # No stored DV, reset to infinity
                                 self.distance_table[dest][next_hop] = float('inf')
                         
                         else:
@@ -233,7 +239,7 @@ def main():
     for name in sorted(router_names):
         routers[name].print_distance_table(0)
         
-    # Step 7: Run Distance Vector algorithm until convergence
+    # Step 7: Run Poisoned Reverse algorithm until convergence
     step = 0
     last_distance_vectors = {}
     
@@ -249,13 +255,19 @@ def main():
         if step > 1 and distance_vectors == last_distance_vectors:
             break
             
-        # Each router updates based on what it receives from neighbors
+        # Each router updates based on what it receives from neighbors (with poisoned reverse)
         for name in router_names:
             router = routers[name]
             for neighbor_name in router.neighbors:
+                print(f"\nDEBUG: {name} receiving distance vector from {neighbor_name}")
                 # Get the poisoned distance vector that this neighbor would send to us
                 neighbor_dv = routers[neighbor_name].get_distance_vector_for_neighbor(name)
-                router.update_from_neighbor(neighbor_name, neighbor_dv)
+                print(f"DEBUG: {name} received from {neighbor_name}: {neighbor_dv}")
+                changed = router.update_from_neighbor(neighbor_name, neighbor_dv)
+                if changed:
+                    print(f"DEBUG: {name} distance table CHANGED after update from {neighbor_name}")
+                else:
+                    print(f"DEBUG: {name} distance table unchanged after update from {neighbor_name}")
         
         # Print distance tables for this step
         for name in sorted(router_names):
@@ -301,7 +313,8 @@ def main():
         for router in routers.values():
             router.recalculate_after_topology_change()
         
-        step = 3  # Start at t=3 after topology change
+        # Print t=3 state immediately after recalculation
+        step = 3
         for name in sorted(router_names):
             routers[name].print_distance_table(step)
         
@@ -318,12 +331,19 @@ def main():
             if step > 3 and distance_vectors == last_distance_vectors:
                 break
                 
-            # Each router updates based on what it receives from neighbors
+            # Each router updates based on what it receives from neighbors (with poisoned reverse)
             for name in router_names:
                 router = routers[name]
                 for neighbor_name in router.neighbors:
-                    if neighbor_name in distance_vectors:
-                        router.update_from_neighbor(neighbor_name, distance_vectors[neighbor_name])
+                    print(f"\nDEBUG: {name} receiving distance vector from {neighbor_name}")
+                    # Get the poisoned distance vector that this neighbor would send to us
+                    neighbor_dv = routers[neighbor_name].get_distance_vector_for_neighbor(name)
+                    print(f"DEBUG: {name} received from {neighbor_name}: {neighbor_dv}")
+                    changed = router.update_from_neighbor(neighbor_name, neighbor_dv)
+                    if changed:
+                        print(f"DEBUG: {name} distance table CHANGED after update from {neighbor_name}")
+                    else:
+                        print(f"DEBUG: {name} distance table unchanged after update from {neighbor_name}")
             
             # Increment step and print tables for this step
             step += 1

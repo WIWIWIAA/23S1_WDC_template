@@ -7,7 +7,7 @@ DistanceVector: distance_vector.py
 	copy distance_vector.py DistanceVector
 
 PoisonedReverse: distance_vector.py
-	copy distance_vector.py PoisonedReverse
+	copy poisoned_reverse.py PoisonedReverse
 
 clean:
 	if exist DistanceVector del DistanceVector
