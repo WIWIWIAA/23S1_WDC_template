@@ -49,6 +49,18 @@ class Router:
             print(row.rstrip())
         print()  # Blank line after each table
     
+    def get_distance_vector(self):
+        """Get current best distances to each destination"""
+        distance_vector = {}
+        for dest in self.all_routers:
+            if dest != self.name:
+                # Find minimum cost across all next hops
+                min_cost = float('inf')
+                for next_hop in self.distance_table[dest]:
+                    if self.distance_table[dest][next_hop] < min_cost:
+                        min_cost = self.distance_table[dest][next_hop]
+                distance_vector[dest] = min_cost
+        return distance_vector
     
 
 def main():
