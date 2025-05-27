@@ -70,7 +70,6 @@ class Router:
     
     def get_distance_vector_for_neighbor(self, neighbor_name):
         """Get distance vector with poisoned reverse for specific neighbor"""
-        print(f"DEBUG: Router {self.name} creating distance vector for neighbor {neighbor_name}")
         distance_vector = {}
         for dest in self.all_routers:
             if dest != self.name:
@@ -85,18 +84,13 @@ class Router:
                             best_cost = cost
                             best_next_hop = next_hop
                 
-                print(f"  Best route to {dest}: via {best_next_hop} cost {best_cost}")
-                
                 # POISONED REVERSE: If we route to dest via this neighbor,
                 # advertise infinity to that neighbor
                 if best_next_hop == neighbor_name:
                     distance_vector[dest] = float('inf')  # Poison the reverse!
-                    print(f"  POISONING: Telling {neighbor_name} that {dest} costs INF (route goes via {neighbor_name})")
                 else:
                     distance_vector[dest] = best_cost
-                    print(f"  Normal: Telling {neighbor_name} that {dest} costs {best_cost}")
                     
-        print(f"  Final DV for {neighbor_name}: {distance_vector}")
         return distance_vector
     
     def update_from_neighbor(self, neighbor_name, neighbor_distances):
@@ -259,15 +253,9 @@ def main():
         for name in router_names:
             router = routers[name]
             for neighbor_name in router.neighbors:
-                print(f"\nDEBUG: {name} receiving distance vector from {neighbor_name}")
                 # Get the poisoned distance vector that this neighbor would send to us
                 neighbor_dv = routers[neighbor_name].get_distance_vector_for_neighbor(name)
-                print(f"DEBUG: {name} received from {neighbor_name}: {neighbor_dv}")
-                changed = router.update_from_neighbor(neighbor_name, neighbor_dv)
-                if changed:
-                    print(f"DEBUG: {name} distance table CHANGED after update from {neighbor_name}")
-                else:
-                    print(f"DEBUG: {name} distance table unchanged after update from {neighbor_name}")
+                router.update_from_neighbor(neighbor_name, neighbor_dv)
         
         # Print distance tables for this step
         for name in sorted(router_names):
@@ -335,15 +323,9 @@ def main():
             for name in router_names:
                 router = routers[name]
                 for neighbor_name in router.neighbors:
-                    print(f"\nDEBUG: {name} receiving distance vector from {neighbor_name}")
                     # Get the poisoned distance vector that this neighbor would send to us
                     neighbor_dv = routers[neighbor_name].get_distance_vector_for_neighbor(name)
-                    print(f"DEBUG: {name} received from {neighbor_name}: {neighbor_dv}")
-                    changed = router.update_from_neighbor(neighbor_name, neighbor_dv)
-                    if changed:
-                        print(f"DEBUG: {name} distance table CHANGED after update from {neighbor_name}")
-                    else:
-                        print(f"DEBUG: {name} distance table unchanged after update from {neighbor_name}")
+                    router.update_from_neighbor(neighbor_name, neighbor_dv)
             
             # Increment step and print tables for this step
             step += 1
