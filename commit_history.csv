@@ -1,0 +1,28 @@
+b795e6f,2025-05-27,Hermanto,remove debug lines
+9dc8afe,2025-05-27,Hermanto,debuggin to check if my poisoned reverse is correct
+f6da5e3,2025-05-26,Hermanto,Update poisoned_reverse.py
+16ad225,2025-05-26,Hermanto,Create poisoned_reverse.py
+51e2300,2025-05-26,Hermanto,remake distance vector file
+45b9a43,2025-05-26,Hermanto,debugging
+c101ec4,2025-05-26,Hermanto,debugging
+ee94671,2025-05-26,Hermanto,prepare makefile and test it out
+e18241c,2025-05-26,Hermanto,continue with the update section
+8b64160,2025-05-26,Hermanto,include updates section
+edd3c77,2025-05-26,Hermanto,continue with the implementation of the algorithm
+7f9ec89,2025-05-26,Hermanto,continue with the implementation
+c3de385,2025-05-26,Hermanto,implement the algorithm
+50547ba,2025-05-26,Hermanto,following requirement of assignment to print out the table now
+31cfc1a,2025-05-26,Hermanto,initialize distance tables with direct connections
+e172c33,2025-05-26,Hermanto,setup network and router object
+21c19f7,2025-05-26,Hermanto,parsing input
+18a66b5,2025-05-26,Hermanto,figure out router class
+60586d5,2025-05-26,Hermanto,setup
+bc0a08a,2023-03-22,Ian Knight, University of Adelaide,Update .devcontainer.json
+abedc02,2023-03-21,Ian Knight, University of Adelaide,Update .devcontainer.json
+23a6100,2023-03-07,Ian Knight, University of Adelaide,Update README.md
+9be4e6f,2023-03-07,Ian Knight, University of Adelaide,Update README.md
+b7626d8,2023-03-07,Ian Knight, University of Adelaide,Update README.md
+42fe895,2023-03-07,Ian Knight, University of Adelaide,Create README.md
+c30f5a3,2023-03-07,Ian Knight, University of Adelaide,Update .devcontainer.json
+5c1db61,2023-03-05,Ian Knight, University of Adelaide,Add linter config
+581a0ad,2023-03-02,Ian Knight, University of Adelaide,Initial commit
